@@ -85,6 +85,49 @@ static void limpar_imagem(Imagem *im) {
     im->box = (SDL_FRect){0, 0, 0, 0};
 }
 
+/*— texto usado: fonte do sistema —*/
+static TTF_Font* abrir_fonte_sistema(int pt) {
+#ifdef _WIN32
+    const char *candidatas[] = {
+        "C:\\Windows\\Fonts\\segoeui.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "C:\\Windows\\Fonts\\tahoma.ttf"
+    };
+#else
+    const char *candidatas[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+    };
+#endif
+    for (size_t i = 0; i < sizeof(candidatas) / sizeof(candidatas[0]); ++i) {
+        TTF_Font *f = TTF_OpenFont(candidatas[i], pt);
+        if (f) {
+            return f;
+        }
+    }
+    return NULL;
+}
+
+static void desenhar_texto(SDL_Renderer *r, const char *s, int x, int y, SDL_Color c) {
+    if (!fonte) {
+        return; // sem fonte do sistema, não desenha texto
+    }
+    SDL_Surface *ts = TTF_RenderText_Solid(fonte, s, 0, c);
+    if (!ts) {
+        return;
+    }
+    SDL_Texture *tt = SDL_CreateTextureFromSurface(r, ts);
+    if (!tt) {
+        SDL_DestroySurface(ts);
+        return;
+    }
+    SDL_FRect dst = { (float)x, (float)y, (float)ts->w, (float)ts->h };
+    SDL_RenderTexture(r, tt, NULL, &dst);
+    SDL_DestroyTexture(tt);
+    SDL_DestroySurface(ts);
+}
+
 /*— imagem —*/
 static void carregar_rgba(const char *path, SDL_Renderer *r, Imagem *outA, Imagem *outB) {
     if (!path || !r || !outA || !outB) {
@@ -337,26 +380,7 @@ static const char* rotulo_dp(float d) {
     return "Alta";
 }
 
-/*— UI: texto e botão —*/
-static void desenhar_texto(SDL_Renderer *r, const char *s, int x, int y, SDL_Color c) {
-    if (!fonte) {
-        return;
-    }
-    SDL_Surface *ts = TTF_RenderText_Solid(fonte, s, 0, c);
-    if (!ts) {
-        return;
-    }
-    SDL_Texture *tt = SDL_CreateTextureFromSurface(r, ts);
-    if (!tt) {
-        SDL_DestroySurface(ts);
-        return;
-    }
-    SDL_FRect dst = { (float)x, (float)y, (float)ts->w, (float)ts->h };
-    SDL_RenderTexture(r, tt, NULL, &dst);
-    SDL_DestroyTexture(tt);
-    SDL_DestroySurface(ts);
-}
-
+/*— UI: botão —*/
 static void desenhar_botao(SDL_Renderer *r, Botao *b, const char *txt) {
     SDL_Color c = b->base;
     if (b->down) {
@@ -574,6 +598,8 @@ int main(int argc, char **argv) {
     if (init_all() == SDL_APP_FAILURE) {
         return SDL_APP_FAILURE;
     }
+
+    fonte = abrir_fonte_sistema(18); /* se não achar, fallback bitmap é usado */
 
     carregar_rgba(argv[1], jImg.r, &imgAtiva, &imgBackup);
 

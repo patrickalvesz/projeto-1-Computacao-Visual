@@ -583,6 +583,9 @@ static SDL_AppResult init_all(void) {
         return SDL_APP_FAILURE;
     }
 
+    // torna a janela de histograma filha da janela de imagem
+    SDL_SetWindowParent(jHist.w, jImg.w);
+
     return SDL_APP_CONTINUE;
 }
 

@@ -156,6 +156,22 @@ static void carregar_rgba(const char *path, SDL_Renderer *r, Imagem *outA, Image
     outB->tex = SDL_CreateTextureFromSurface(r, outB->surf);
     SDL_GetTextureSize(outA->tex, &outA->box.w, &outA->box.h);
     SDL_GetTextureSize(outB->tex, &outB->box.w, &outB->box.h);
+
+    /* ajusta mantendo proporção dentro de 640x480 (fit) */
+    float tex_w = outA->box.w, tex_h = outA->box.h;
+    float scale_x = (float)W_IMG_PAD / tex_w;
+    float scale_y = (float)H_IMG_PAD / tex_h;
+    float scale = scale_x < scale_y ? scale_x : scale_y;
+
+    float dst_w = tex_w * scale;
+    float dst_h = tex_h * scale;
+    float dst_x = ((float)W_IMG_PAD - dst_w) * 0.5f;
+    float dst_y = ((float)H_IMG_PAD - dst_h) * 0.5f;
+
+    outA->box.x = dst_x; outA->box.y = dst_y; outA->box.w = dst_w; outA->box.h = dst_h;
+    outB->box = outA->box; /* usa o mesmo destino para a cópia backup */
+
+
 }
 
 static int ja_eh_cinza(Imagem *im) {
@@ -471,7 +487,7 @@ static void draw_all(void) {
     SDL_RenderClear(jImg.r);
 
     if (imgAtiva.tex) {
-        SDL_RenderTexture(jImg.r, imgAtiva.tex, &imgAtiva.box, &imgAtiva.box);
+        SDL_RenderTexture(jImg.r, imgAtiva.tex, NULL, &imgAtiva.box);
     }
 
     SDL_RenderPresent(jImg.r);
@@ -614,7 +630,7 @@ int main(int argc, char **argv) {
     int ih = (int)imgAtiva.box.h;
 
     if (iw > 0 && ih > 0) {
-        SDL_SetWindowSize(jImg.w, iw, ih);
+        SDL_SetWindowSize(jImg.w, W_IMG_PAD, H_IMG_PAD);
         SDL_SetWindowPosition(jImg.w, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 
         SDL_Rect bounds;
